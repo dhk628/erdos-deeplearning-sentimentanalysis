@@ -140,12 +140,13 @@ if __name__ == '__main__':
                                                            trial_dirname_creator=short_dirname
                                                            ),
                                run_config=train.RunConfig(name='sst5_costco_under-lr_beta' + '_' + datetime.now().strftime('%Y%m%d_%H%M%S'),
-                                                          storage_path="D:/GitHub/Data Science/erdos-deeplearning-companydiscource/.ray_results"
+                                                          storage_path="D:/GitHub/Data Science/erdos-deeplearning-companydiscource/codes/dohoon/.ray_results"
                                                           )
                                )
         else:
             # If tuning was stopped
-            tuner = tune.Tuner.restore(path="D:/GitHub/Data Science/erdos-deeplearning-companydiscource/.ray_results/sst5_costco_under_neurons1_neurons2_20240630_003706",
+            tuner = tune.Tuner.restore(path="D:/GitHub/Data Science/erdos-deeplearning-companydiscource/codes/dohoon/.ray_results/"
+                                            + "sst5_costco_under_neurons1_neurons2_20240630_003706",
                                        trainable=tune.with_resources(train_model,
                                                                      resources={'gpu': 1}
                                                                      ),
