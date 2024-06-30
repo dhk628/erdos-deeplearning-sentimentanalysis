@@ -1,0 +1,204 @@
+MODEL 1: FNN with one layer, regular classification
+
+Defaults:
+	batch_size=32
+	lr=0.001
+	early_stop_patience=1
+	early_stop_min_delta=0.001
+	16 neurons
+	200 max epochs
+
+
+Tuning optimizer
+Adam(): 0.583463 (20 epochs)
+SGD(momentum=0.9, nesterov=True): 0.578003 (200 epochs)
+
+
+Tuning lr, beta1, beta2
+search_space = {'lr': tune.grid_search([0.01, 0.001, 0.0001, 0.00001]),
+                'beta1': tune.grid_search([0.8, 0.9, 0.99, 0.999]),
+                'beta2': tune.grid_search([0.9, 0.99, 0.999, 0.9999])}
+{'lr': 0.01, 'beta1': 0.9, 'beta2': 0.99}
+0.5663026521060842
+
+
+Tuning batch_size
+search_space = {'batch_size': tune.grid_search([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])}
+Best config: {'batch_size': 64}
+Best accuracy: 0.5499219968798752
+Epochs: 16
+
+
+Tuning number of neurons
+search_space = {'n_neurons': tune.grid_search([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])}
+Best config: {'n_neurons': 1024}
+Best accuracy: 0.5569422776911076
+Epochs: 4
+
+search_space = {'n_neurons': tune.grid_search([500, 550, 600, 650, 700, 750, 800, 900, 950, 1000])}
+Best config: {'n_neurons': 600}
+Best accuracy: 0.5717628705148206
+Epochs: 2
+
+Comment: As expected, the number of epochs is too low, which may not lead to good generalization. This may not be an issue with regularization and dropouts.
+         If I try the above with grace_period=10 in ASHA, though, I also get
+		 Best config: {'n_neurons': 600}
+	     Best accuracy: 0.5421216848673946
+		 Epochs: 10
+
+
+Tuning regularization
+search_space = {'weight_decay': tune.loguniform(1e-4, 1e-1),
+                'dropout_rate': tune.uniform(0.2, 0.8)}
+
+scheduler = ASHAScheduler(max_t=max_num_epochs,
+                          grace_period=2,
+                          reduction_factor=2)
+
+optuna_search = OptunaSearch(metric="mean_accuracy",
+                             mode="max")
+
+tuner = tune.Tuner(tune.with_resources(train_model,
+                                       resources={'cpu': 16, 'gpu': 1}),
+                   param_space=search_space,
+                   tune_config=tune.TuneConfig(metric='mean_accuracy',
+                                               mode='max',
+                                               scheduler=scheduler,
+                                               search_alg=optuna_search,
+                                               num_samples=100))
+Best config: {'weight_decay': 0.00010020061781597282, 'dropout_rate': 0.2891813166082142}
+Best accuracy: 0.5655226209048362
+Epochs: 32
+
+Comment: Worse than without regularization?
+         Retry after allowing weight_decay and dropout_rate to be smaller.
+		 
+search_space = {'weight_decay': tune.loguniform(1e-6, 1e-1),
+                'dropout_rate': tune.uniform(0.0, 0.8)}
+
+scheduler = ASHAScheduler(max_t=max_num_epochs,
+                          grace_period=2,
+                          reduction_factor=2)
+
+optuna_search = OptunaSearch(metric="mean_accuracy",
+                             mode="max")
+
+tuner = tune.Tuner(tune.with_resources(train_model,
+                                       resources={'cpu': 16, 'gpu': 1}),
+                   param_space=search_space,
+                   tune_config=tune.TuneConfig(metric='mean_accuracy',
+                                               mode='max',
+                                               scheduler=scheduler,
+                                               search_alg=optuna_search,
+                                               num_samples=200))
+Best config: {'weight_decay': 3.9061383926177834e-05, 'dropout_rate': 0.1594435796066474}
+Best accuracy: 0.5678627145085804
+Epochs: 2
+
+
+Using max_num_epochs = 500
+Best config: {'weight_decay': 5.361919401182879e-06, 'dropout_rate': 0.27087908376414493}
+Best accuracy: 0.5694227769110765
+Epochs: 2
+
+
+Tuning weight_decay with dropout_rate=0
+Best config: {'weight_decay': 2.738776649053346e-05, 'dropout_rate': 0}
+Best accuracy: 0.5624024960998439
+Epochs: 2
+
+
+Using weighted random sampler with config: {'weight_decay': 5.361919401182879e-06, 'dropout_rate': 0.27087908376414493}
+sampler = WeightedRandomSampler(class_weights, sum(class_counts), replacement=True, generator=torch.Generator(device='cpu').manual_seed(123))
+train_loader = DataLoader(data_train, batch_size=64, shuffle=True, generator=g, sampler=sampler)
+Awful accuracy (0.25ish)
+
+
+
+
+
+
+
+
+MODEL 2: FNN with sst5 data and undersampled costco data, regular classification
+
+Tuning lr and beta
+search_space = {'lr': tune.grid_search([1e-1, 1e-2, 1e-3, 1e-4]),
+				'beta1': tune.grid_search([0.8, 0.9, 0.99, 0.999]),
+				'beta2': tune.grid_search([0.9, 0.99, 0.999, 0.9999]),
+				'batch_size': 32,
+				'n_neurons': [16],
+				'dropout_p': [0],
+				'weight_decay': 0,
+				'max_num_epochs': 100
+				}
+Best config: {'lr': 0.001, 'beta1': 0.99, 'beta2': 0.9999, 'batch_size': 32, 'n_neurons': [16], 'dropout_p': [0], 'weight_decay': 0, 'max_num_epochs': 100}
+Best accuracy: 0.5331470167684909
+Epochs: 2
+
+
+Tuning batch size
+search_space = {'lr': 0.001,
+				'beta1': 0.99,
+				'beta2': 0.9999,
+				'batch_size': tune.grid_search([2048, 1024, 512, 256, 128, 64, 32, 16, 8]),
+				'n_neurons': [16],
+				'dropout_p': [0],
+				'weight_decay': 0,
+				'max_num_epochs': 100
+				}
+Best config: {'lr': 0.001, 'beta1': 0.99, 'beta2': 0.9999, 'batch_size': 512, 'n_neurons': [16], 'dropout_p': [0], 'weight_decay': 0, 'max_num_epochs': 100}
+Best accuracy: 0.5347718705316522
+Epochs: 100				
+
+
+Tuning number of neurons (one layer)
+search_space = {'lr': 0.001,
+				'beta1': 0.99,
+				'beta2': 0.9999,
+				'batch_size': 512,
+				'n_neurons1': tune.lograndint(1, 2048),
+				'dropout_p': [0],
+				'weight_decay': 0,
+				'max_num_epochs': 200
+				}
+num_samples=200
+Best config: {'lr': 0.001, 'beta1': 0.99, 'beta2': 0.9999, 'batch_size': 512, 'n_neurons1': 856, 'dropout_p': [0], 'weight_decay': 0, 'max_num_epochs': 200}
+Best accuracy: 0.5402313791758742
+Epochs: 16
+
+
+Tuning number of neurons (two layers)
+search_space = {'lr': 0.001,
+				'beta1': 0.99,
+				'beta2': 0.9999,
+				'batch_size': 512,
+				'n_neurons1': tune.lograndint(1, 2048),
+				'n_neurons2': tune.lograndint(1, 2048),
+				'dropout_p1': 0,
+				'dropout_p2': 0,
+				'weight_decay': 0,
+				'max_num_epochs': 200
+				}
+num_samples=300
+Best config: {'lr': 0.001, 'beta1': 0.99, 'beta2': 0.9999, 'batch_size': 512, 'n_neurons1': 1465, 'n_neurons2': 1360, 'dropout_p1': 0, 'dropout_p2': 0, 'weight_decay': 0, 'max_num_epochs': 200}
+Best accuracy: 0.5401663850253478
+Epochs: 16
+
+
+Training dropout and regularization
+search_space = {'lr': 0.001,
+				'beta1': 0.99,
+				'beta2': 0.9999,
+				'batch_size': 512,
+				'n_neurons1': 856,
+				# 'n_neurons2': tune.lograndint(1s, 2048),
+				'dropout_p1': tune.uniform(0.0, 0.8),
+				# 'dropout_p2': 0,
+				'weight_decay': tune.loguniform(1e-6, 1e-1),
+				'max_num_epochs': 200
+				}
+num_samples=300				
+Best config: {'lr': 0.001, 'beta1': 0.99, 'beta2': 0.9999, 'batch_size': 512, 'n_neurons1': 856, 'dropout_p1': 0.5102881776071535, 'weight_decay': 0.0001436144893378679, 'max_num_epochs': 200}
+Best accuracy: 0.5402313791758742
+Epochs: 200
