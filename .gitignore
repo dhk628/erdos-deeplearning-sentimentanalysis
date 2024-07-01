@@ -1,4 +1,5 @@
 __pycache__/
 .idea/
-coes/dohoon/.ray_results/
+codes/dohoon/.ray_results/
 codes/dohoon/data
+data/
