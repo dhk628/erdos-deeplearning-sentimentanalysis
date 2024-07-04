@@ -98,7 +98,8 @@ def train_model(config, print_interval=None):
                     )
 
 
-RAY_RESULTS_PATH = "D:/GitHub/Data Science/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
+# RAY_RESULTS_PATH = "D:/GitHub/Data Science/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
+RAY_RESULTS_PATH = ".ray_results"
 
 if __name__ == '__main__':
     X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
