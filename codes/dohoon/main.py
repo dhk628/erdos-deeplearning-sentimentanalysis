@@ -6,6 +6,7 @@ from evaluation import evaluate_model, save_evaluation
 import models
 
 import os
+import time
 import tempfile
 import copy
 import matplotlib.pyplot as plt
@@ -35,8 +36,6 @@ from ray.train import Checkpoint
 from datetime import datetime
 from sklearn.feature_selection import SelectKBest, f_classif
 
-# import sys
-# sys.path.append(os.getcwd())
 
 def short_dirname(trial):
     return "trial_" + str(trial.trial_id)
@@ -98,8 +97,8 @@ def train_model(config, print_interval=None):
                     )
 
 
-# RAY_RESULTS_PATH = "D:/GitHub/Data Science/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
-RAY_RESULTS_PATH = "/export/dohoonk/.ray_results"
+RAY_RESULTS_PATH = "D:/GitHub/Data Science/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
+# RAY_RESULTS_PATH = "/export/dohoonk/.ray_results"
 
 if __name__ == '__main__':
     X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
@@ -119,7 +118,7 @@ if __name__ == '__main__':
     val_id = ray.put(data_val)
 
     search_space = {'lr': 0.001,
-                    'beta1': tune.grid_search([0.8, 0.9, 0.99, 0.999]),
+                    'beta1': 0.8,
                     'beta2': 0.999,
                     'batch_size': 32,
                     'n_neurons1': 66,
@@ -130,7 +129,7 @@ if __name__ == '__main__':
                     'max_num_epochs': 200,
                     }
 
-    ray_tune = True
+    ray_tune = False
     resume = False
     search_name = 'sst5_costco_under-128best-lr_beta'
 
@@ -190,4 +189,6 @@ if __name__ == '__main__':
         print('Epochs: ' + str(best_result_epochs))
     else:
         # Run without Ray tune
+        start_time = time.time()
         train_model(search_space, print_interval=10)
+        print("--- %s seconds ---" % (time.time() - start_time))
