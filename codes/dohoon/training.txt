@@ -202,3 +202,6 @@ num_samples=300
 Best config: {'lr': 0.001, 'beta1': 0.99, 'beta2': 0.9999, 'batch_size': 512, 'n_neurons1': 856, 'dropout_p1': 0.5102881776071535, 'weight_decay': 0.0001436144893378679, 'max_num_epochs': 200}
 Best accuracy: 0.5402313791758742
 Epochs: 200
+
+---------------------------------------------
+

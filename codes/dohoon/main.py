@@ -1,5 +1,5 @@
 from initialization import set_seed, use_gpu
-from data import RatingDataset, load_data
+from data import RatingDataset, get_data, load_data, load_data_from_ray
 from neural_network import train_func, eval_func, test_model, get_argmax, get_model_structure, save_model_structure, \
     EarlyStopper
 from evaluation import evaluate_model, save_evaluation
@@ -33,6 +33,7 @@ from ray.tune.search.optuna import OptunaSearch
 import ray
 from ray.train import Checkpoint
 from datetime import datetime
+from sklearn.feature_selection import SelectKBest, f_classif
 
 
 def short_dirname(trial):
@@ -43,15 +44,11 @@ def train_model(config, print_interval=None):
     start = 1
     device = use_gpu()
     g = set_seed(123, 'cpu')
-    if ray_tune:
-        train_loader = DataLoader(ray.get(train_id), batch_size=config['batch_size'], shuffle=True, generator=g)
-        val_loader = DataLoader(ray.get(val_id), batch_size=1024, shuffle=True, generator=g)
-    else:
-        train_loader = DataLoader(data_train, batch_size=config['batch_size'], shuffle=True, generator=g)
-        val_loader = DataLoader(data_val, batch_size=1024, shuffle=True, generator=g)
+    train_loader = DataLoader(ray.get(train_id), batch_size=config['batch_size'], shuffle=True, generator=g)
+    val_loader = DataLoader(ray.get(val_id), batch_size=1024, shuffle=True, generator=g)
 
     model = models.FeedForwardNet(
-        input_size=1024,
+        input_size=128,
         output_size=5,
         hidden_layers=[config['n_neurons1']],
         dropout_p=[config['dropout_p1']]
@@ -72,6 +69,7 @@ def train_model(config, print_interval=None):
     if ray_tune:
         checkpoint = train.get_checkpoint()
         if checkpoint:
+            print('Checkpoint exists!')
             with checkpoint.as_directory() as checkpoint_dir:
                 checkpoint_dict = torch.load(os.path.join(checkpoint_dir, "checkpoint.pt"))
                 start = checkpoint_dict["epoch"] + 1
@@ -101,35 +99,40 @@ def train_model(config, print_interval=None):
 RAY_RESULTS_PATH = "D:/GitHub/Data Science/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
 
 if __name__ == '__main__':
-    X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test = load_data(sst5='original',
-                                                                                         costco=False)
+    X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
+        = get_data(sst5='original',
+                   costco='none')
 
+    feature_selector = SelectKBest(f_classif, k=128)
+    X_train = feature_selector.fit_transform(X_train, y_train)
+    X_val = feature_selector.transform(X_val)
+
+    in_features = X_train.shape[0]
     ohe = 'none'
 
     data_train = RatingDataset(X_train, y_train, ohe=ohe)
     data_val = RatingDataset(X_val, y_val, ohe=ohe)
+    train_id = ray.put(data_train)
+    val_id = ray.put(data_val)
 
-    search_space = {'lr': 0.01,
-                    'beta1': 0.9,
-                    'beta2': 0.99,
-                    'batch_size': 64,
-                    'n_neurons1': 600,
+    search_space = {'lr': 0.001,
+                    'beta1': tune.grid_search([0.8, 0.9, 0.99, 0.999]),
+                    'beta2': 0.999,
+                    'batch_size': 32,
+                    'n_neurons1': 66,
                     # 'n_neurons2': tune.lograndint(1s, 2048),
-                    'dropout_p1': 0.27087908376414493,
+                    'dropout_p1': 0,
                     # 'dropout_p2': 0,
-                    'weight_decay': 5.361919401182879e-06,
-                    'max_num_epochs': 10
+                    'weight_decay': 0,
+                    'max_num_epochs': 200,
                     }
 
-    ray_tune = False
+    ray_tune = True
     resume = False
-    search_name = 'sst5_costco_under-lr_beta'
+    search_name = 'sst5_costco_under-128best-lr_beta'
 
     if ray_tune:
         # Run with Ray tune
-        train_id = ray.put(data_train)
-        val_id = ray.put(data_val)
-
         scheduler = ASHAScheduler(
             max_t=search_space['max_num_epochs'],
             grace_period=2,
@@ -150,9 +153,9 @@ if __name__ == '__main__':
                 tune_config=tune.TuneConfig(
                     metric='mean_accuracy',
                     mode='max',
-                    scheduler=scheduler,
+                    # scheduler=scheduler,
                     # search_alg=optuna_search,
-                    # num_samples=300,
+                    # num_samples=200,
                     trial_dirname_creator=short_dirname
                 ),
                 run_config=train.RunConfig(
@@ -163,7 +166,7 @@ if __name__ == '__main__':
         else:
             # If tuning was stopped
             tuner = tune.Tuner.restore(
-                path=RAY_RESULTS_PATH + '/' + 'sst5_costco_under-lr_beta-20240630_192442',
+                path=RAY_RESULTS_PATH + '/' + 'sst5_costco_under-n1-20240701_230127',
                 trainable=tune.with_resources(
                     train_model,
                     resources={'cpu': 8, 'gpu': 0.5}
@@ -184,4 +187,4 @@ if __name__ == '__main__':
         print('Epochs: ' + str(best_result_epochs))
     else:
         # Run without Ray tune
-        train_model(search_space, print_interval=None)
+        train_model(search_space, print_interval=10)

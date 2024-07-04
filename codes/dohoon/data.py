@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from coral_pytorch.dataset import levels_from_labelbatch, proba_to_label
 from sklearn.model_selection import train_test_split
+import ray
 
 
 class RatingDataset(Dataset):
@@ -24,7 +25,7 @@ class RatingDataset(Dataset):
         return vector, rating
 
 
-def load_data(sst5='original', costco=False):
+def get_data(sst5='original', costco='none'):
     df_train = pd.read_parquet('data/sst5/sst-5_train.parquet').rename(
         columns={'truth': 'rating', 'vectors': 'vector'})
     df_val = pd.read_parquet('data/sst5/sst-5_validation.parquet').rename(
@@ -46,7 +47,7 @@ def load_data(sst5='original', costco=False):
         X_train_c = np.load('data/costco_google_reviews/vector_under.npy')
         y_train_c = np.load('data/costco_google_reviews/rating_under.npy')
 
-    if costco:
+    if costco != 'none':
         X_train = np.vstack([X_train_c, X_train_s])
         y_train = np.hstack([y_train_c, y_train_s])
     else:
@@ -64,6 +65,13 @@ def load_data(sst5='original', costco=False):
 
     return X_train, X_val, X_val_s, X_test_s, y_train, y_val, y_val_s, y_test_s
 
+
+def load_data(dataset, batch_size, generator):
+    return DataLoader(dataset, batch_size=batch_size, shuffle=True, generator=generator)
+
+
+def load_data_from_ray(dataset_id, batch_size, generator):
+    DataLoader(ray.get(dataset_id), batch_size=batch_size, shuffle=True, generator=generator)
 
 # def load_data_old(dataset, num=None):
 #     if dataset == 'sst5':
