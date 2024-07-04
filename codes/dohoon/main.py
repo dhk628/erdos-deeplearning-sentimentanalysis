@@ -35,8 +35,8 @@ from ray.train import Checkpoint
 from datetime import datetime
 from sklearn.feature_selection import SelectKBest, f_classif
 
-import sys
-sys.path.append(os.getcwd())
+# import sys
+# sys.path.append(os.getcwd())
 
 def short_dirname(trial):
     return "trial_" + str(trial.trial_id)
