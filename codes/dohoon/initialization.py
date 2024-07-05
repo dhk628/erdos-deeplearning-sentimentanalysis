@@ -28,10 +28,10 @@ def use_gpu():
 
 def set_ray_settings(machine='pc'):
     if machine == 'math_a':
-        path = "/export/dohoonk/github/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
+        path = "/export/dohoonk/erdos/codes/dohoon/.ray_results"
         resources = {'cpu': 1, 'gpu': 0.00892857142}  # 112 concurrent trials
     elif machine == 'math_b':
-        path = "/export/dohoonk/github/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
+        path = "/export/dohoonk/erdos/codes/dohoon/.ray_results"
         resources = {'cpu': 1, 'gpu': 0.03125}  # 256 concurrent trials
     else:
         path = "D:/GitHub/Data Science/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
