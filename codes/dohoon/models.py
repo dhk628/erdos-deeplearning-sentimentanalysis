@@ -5,6 +5,8 @@ from torch.nn import functional as F
 class FeedForwardNet(nn.Module):
     def __init__(self, input_size, output_size, hidden_layers, dropout_p):
         super().__init__()
+        hidden_layers = [i for i in hidden_layers if i != 0]
+
         self.layers = nn.ModuleList([nn.Linear(input_size, hidden_layers[0])])
         self.layers.append(nn.Dropout(dropout_p[0]))
         self.layers.append(nn.ReLU())
