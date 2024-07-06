@@ -135,12 +135,12 @@ if __name__ == '__main__':
     val_id = ray.put(data_val)
 
     search_space = {'lr': tune.grid_search([1e-1, 1e-2, 1e-3, 1e-4]),
-                    'alpha1': tune.grid_search([0.8, 0.9, 0.99, 0.999]),
-                    'alpha2': tune.grid_search([0.9, 0.99, 0.999, 0.9999]),
+                    'alpha1': tune.grid_search([0.2, 0.1, 0.01, 0.001]),
+                    'alpha2': tune.grid_search([0.1, 0.01, 0.001, 0.0001]),
                     'batch_size': 32,
                     'n_neurons1': 66,
                     'max_num_epochs': 200,
-                    'min_num_epochs': 10,
+                    'min_num_epochs': 50,
                     'checkpoint_interval': 10,
                     }
 
