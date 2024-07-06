@@ -115,7 +115,7 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
               % (epoch, float(val_acc)))
 
 
-RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('pc')
+RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('math_a')
 
 if __name__ == '__main__':
     X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
@@ -134,13 +134,13 @@ if __name__ == '__main__':
     train_id = ray.put(data_train)
     val_id = ray.put(data_val)
 
-    search_space = {'lr': tune.grid_search([1e-1, 1e-2, 1e-3, 1e-4]),
-                    'alpha1': tune.grid_search([0.8, 0.9, 0.99, 0.999]),
-                    'alpha2': tune.grid_search([0.9, 0.99, 0.999, 0.9999]),
+    search_space = {'lr': tune.loguniform(1e-4, 1e-1),
+                    'alpha1': tune.loguniform(1e-3, 0.2),
+                    'alpha2': tune.loguniform(1e-5, 1e-2),
                     'batch_size': 32,
                     'n_neurons1': 66,
                     'max_num_epochs': 200,
-                    'min_num_epochs': 10,
+                    'min_num_epochs': 40,
                     'checkpoint_interval': 10,
                     }
 
@@ -193,14 +193,14 @@ if __name__ == '__main__':
                     metric='mean_accuracy',
                     mode='max',
                     scheduler=scheduler_asha,
-                    # search_alg=optuna_search,
-                    # num_samples=200,
+                    search_alg=optuna_search,
+                    num_samples=200,
                     trial_dirname_creator=short_dirname,
                 ),
                 run_config=train.RunConfig(
                     name=search_name + '-' + datetime.now().strftime('%Y%m%d_%H%M%S'),
                     storage_path=RAY_RESULTS_PATH,
-                    # stop=trial_stopper,
+                    stop=trial_stopper,
                 )
             )
         else:

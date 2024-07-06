@@ -134,13 +134,13 @@ if __name__ == '__main__':
     train_id = ray.put(data_train)
     val_id = ray.put(data_val)
 
-    search_space = {'lr': tune.grid_search([1e-1, 1e-2, 1e-3, 1e-4]),
-                    'alpha1': tune.grid_search([0.2, 0.1, 0.01, 0.001]),
-                    'alpha2': tune.grid_search([0.1, 0.01, 0.001, 0.0001]),
+    search_space = {'lr': tune.loguniform(1e-4, 1e-1),
+                    'alpha1': tune.loguniform(1e-3, 0.2),
+                    'alpha2': tune.loguniform(1e-5, 1e-2),
                     'batch_size': 32,
                     'n_neurons1': 66,
                     'max_num_epochs': 200,
-                    'min_num_epochs': 50,
+                    'min_num_epochs': 40,
                     'checkpoint_interval': 10,
                     }
 
