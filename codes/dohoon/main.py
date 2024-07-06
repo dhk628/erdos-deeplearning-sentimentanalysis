@@ -1,4 +1,4 @@
-from initialization import set_seed, use_gpu, set_ray_settings
+from initialization import set_seed, use_gpu, set_ray_settings, short_dirname
 from data import RatingDataset, get_data, load_data, load_data_from_ray
 from neural_network import train_func, eval_func, test_model, get_argmax, get_model_structure, save_model_structure, \
     EarlyStopper
@@ -31,8 +31,7 @@ from sklearn.feature_selection import SelectKBest, f_classif
 from ray.tune.stopper import TrialPlateauStopper
 
 
-def short_dirname(trial):
-    return "trial_" + str(trial.trial_id)
+RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('math_a')
 
 
 def train_model(config, print_interval=None, early_stop_patience=0, early_stop_min_delta=0.0):
@@ -115,8 +114,6 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
               % (epoch, float(val_acc)))
 
 
-RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('math_a')
-
 if __name__ == '__main__':
     X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
         = get_data(sst5='original',
@@ -170,7 +167,8 @@ if __name__ == '__main__':
         optuna_search = OptunaSearch(
             metric="mean_accuracy",
             mode="max",
-            seed=123
+            seed=123,
+            points_to_evaluate=[{'lr': 0.0011667300285897403, 'alpha1': 0.0010889159512101896, 'alpha2': 7.094804335419697e-05}]
         )
 
         trial_stopper = TrialPlateauStopper(

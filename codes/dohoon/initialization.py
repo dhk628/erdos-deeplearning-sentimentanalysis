@@ -32,9 +32,13 @@ def set_ray_settings(machine='pc'):
         resources = {'cpu': 2, 'gpu': 0.01785714285}  # 56 concurrent trials
     elif machine == 'math_b':
         path = "/export/dohoonk/erdos/codes/dohoon/.ray_results"
-        resources = {'cpu': 1, 'gpu': 0.0625}  # 128 concurrent trials
+        resources = {'cpu': 2, 'gpu': 0.125}  # 64 concurrent trials
     else:
         path = "D:/GitHub/Data Science/erdos-deeplearning-companydiscourse/codes/dohoon/.ray_results"
         resources = {'cpu': 8, 'gpu': 0.5}
 
     return path, resources
+
+
+def short_dirname(trial):
+    return "trial_" + str(trial.trial_id)
