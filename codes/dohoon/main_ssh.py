@@ -115,7 +115,7 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
               % (epoch, float(val_acc)))
 
 
-RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('math_b')
+RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('math_a')
 
 if __name__ == '__main__':
     X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \

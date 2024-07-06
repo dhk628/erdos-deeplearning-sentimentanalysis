@@ -29,7 +29,7 @@ def use_gpu():
 def set_ray_settings(machine='pc'):
     if machine == 'math_a':
         path = "/export/dohoonk/erdos/codes/dohoon/.ray_results"
-        resources = {'cpu': 1, 'gpu': 0.00892857142}  # 112 concurrent trials
+        resources = {'cpu': 2, 'gpu': 0.01785714285}  # 56 concurrent trials
     elif machine == 'math_b':
         path = "/export/dohoonk/erdos/codes/dohoon/.ray_results"
         resources = {'cpu': 1, 'gpu': 0.0625}  # 128 concurrent trials
