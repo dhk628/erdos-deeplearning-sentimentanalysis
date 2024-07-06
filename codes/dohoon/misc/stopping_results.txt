@@ -1,0 +1,34 @@
+ASHA grid search, min=50
+Best config: {'lr': 0.0001, 'alpha1': 0.8, 'alpha2': 0.9999, 'batch_size': 32, 'n_neurons1': 66, 'max_num_epochs': 200, 'min_num_epochs': 50, 'checkpoint_interval': 10}
+Best accuracy: 0.5639625585023401
+Epochs: 200
+
+ASHA grid search, min=20
+Best config: {'lr': 0.01, 'alpha1': 0.8, 'alpha2': 0.999, 'batch_size': 32, 'n_neurons1': 66, 'max_num_epochs': 200, 'min_num_epochs': 20, 'checkpoint_interval': 10}
+Best accuracy: 0.5460218408736349
+Epochs: 200
+
+ASHA grid search, min=10
+Best config: {'lr': 0.001, 'alpha1': 0.8, 'alpha2': 0.9999, 'batch_size': 32, 'n_neurons1': 66, 'max_num_epochs': 200, 'min_num_epochs': 10, 'checkpoint_interval': 10}
+Best accuracy: 0.5553822152886115
+Epochs: 80
+
+
+
+ASHA grid search, min=50, trial_stopper
+Best config: {'lr': 0.001, 'alpha1': 0.9, 'alpha2': 0.99, 'batch_size': 32, 'n_neurons1': 66, 'max_num_epochs': 200, 'min_num_epochs': 50, 'checkpoint_interval': 10}
+Best accuracy: 0.5748829953198128
+Epochs: 75
+
+ASHA grid search, min=20, trial_stopper
+Best config: {'lr': 0.001, 'alpha1': 0.9, 'alpha2': 0.9999, 'batch_size': 32, 'n_neurons1': 66, 'max_num_epochs': 200, 'min_num_epochs': 20, 'checkpoint_interval': 10}
+Best accuracy: 0.5639625585023401
+Epochs: 22
+
+ASHA grid search, min=20, trial_stopper
+Best config: {'lr': 0.001, 'alpha1': 0.8, 'alpha2': 0.9, 'batch_size': 32, 'n_neurons1': 66, 'max_num_epochs': 200, 'min_num_epochs': 10, 'checkpoint_interval': 10}
+Best accuracy: 0.5592823712948518
+Epochs: 23
+
+
+
