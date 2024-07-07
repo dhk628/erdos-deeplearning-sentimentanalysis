@@ -12,8 +12,11 @@ class RatingDataset(Dataset):
         self.vector = torch.tensor(vector, dtype=torch.float32)
         if ohe == 'none':
             self.rating = torch.tensor(rating, dtype=torch.int64)
-        if ohe == 'ordinal':
+        elif ohe == 'coral':
             self.rating = levels_from_labelbatch(rating, num_classes=5)
+        else:
+            self.rating = torch.tensor(rating, dtype=torch.int64)
+        self.ratings_original = torch.tensor(rating, dtype=torch.int64)
         self.ohe = ohe
 
     def __len__(self):
@@ -22,7 +25,8 @@ class RatingDataset(Dataset):
     def __getitem__(self, idx):
         vector = self.vector[idx]
         rating = self.rating[idx]
-        return vector, rating
+        ratings_original = self.ratings_original[idx]
+        return vector, rating, ratings_original
 
 
 def get_data(sst5='original', costco='none'):

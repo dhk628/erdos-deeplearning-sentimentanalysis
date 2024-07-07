@@ -18,9 +18,9 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler
-from coral_pytorch.dataset import levels_from_labelbatch, proba_to_label
+from coral_pytorch.dataset import levels_from_labelbatch, proba_to_label, corn_label_from_logits
 from coral_pytorch.layers import CoralLayer
-from coral_pytorch.losses import coral_loss
+from coral_pytorch.losses import coral_loss, CoralLoss, CornLoss
 from ray import train, tune
 from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune.search.optuna import OptunaSearch
@@ -31,7 +31,7 @@ from sklearn.feature_selection import SelectKBest, f_classif
 from ray.tune.stopper import TrialPlateauStopper
 
 
-RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('math_a')
+RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('pc')
 
 
 def train_model(config, print_interval=None, early_stop_patience=0, early_stop_min_delta=0.0):
@@ -43,14 +43,19 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
     early_stopper = EarlyStopper(patience=early_stop_patience, min_delta=early_stop_min_delta)
 
     model = models.FeedForwardNet(
-        input_size=128,
-        output_size=5,
+        input_size=in_features,
+        output_size=out_features,
         hidden_layers=[config['n_neurons1']],
         dropout_p=[config.get('dropout_p1', 0)]
     )
     model = model.to(device)
 
-    loss_fn = nn.CrossEntropyLoss()
+    if ohe == 'coral':
+        loss_fn = CoralLoss()  # CoralLoss() or nn.MSELoss()
+    elif ohe == 'corn':
+        loss_fn = CornLoss(5)
+    else:
+        loss_fn = nn.CrossEntropyLoss()
 
     optimizer = optim.Adam(
         model.parameters(),
@@ -59,7 +64,14 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
         weight_decay=config.get('weight_decay', 0)
     )
 
-    get_pred = get_argmax
+    if ohe == 'none':
+        get_pred = get_argmax
+    elif ohe == 'coral':
+        get_pred = proba_to_label
+    elif ohe == 'corn':
+        get_pred = corn_label_from_logits
+    else:
+        get_pred = get_argmax
 
     if ray_tune:
         checkpoint = train.get_checkpoint()
@@ -123,27 +135,31 @@ if __name__ == '__main__':
     X_train = feature_selector.fit_transform(X_train, y_train)
     X_val = feature_selector.transform(X_val)
 
-    in_features = X_train.shape[0]
     ohe = 'none'
+    in_features = X_train.shape[1]
+    if ohe == ('coral' or 'corn'):
+        out_features = 4
+    else:
+        out_features = 5
 
     data_train = RatingDataset(X_train, y_train, ohe=ohe)
     data_val = RatingDataset(X_val, y_val, ohe=ohe)
     train_id = ray.put(data_train)
     val_id = ray.put(data_val)
 
-    search_space = {'lr': tune.loguniform(1e-4, 1e-1),
-                    'alpha1': tune.loguniform(1e-3, 0.2),
-                    'alpha2': tune.loguniform(1e-5, 1e-2),
+    search_space = {'lr': 0.001,  # tune.loguniform(1e-4, 1e-1),
+                    'alpha1': 0.1,  # tune.loguniform(1e-3, 0.2),
+                    'alpha2': 0.01,  # tune.loguniform(1e-5, 1e-2),
                     'batch_size': 32,
                     'n_neurons1': 66,
-                    'max_num_epochs': 200,
+                    'max_num_epochs': 50,
                     'min_num_epochs': 40,
                     'checkpoint_interval': 10,
                     }
 
-    ray_tune = True
+    ray_tune = False
     resume = False
-    search_name = 'sst5_costco_under'
+    search_name = 'sst5_128_coral'
 
     if ray_tune:
         # Run with Ray tune
