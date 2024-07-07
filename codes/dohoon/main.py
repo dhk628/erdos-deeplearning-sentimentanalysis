@@ -153,13 +153,13 @@ if __name__ == '__main__':
     train_id = ray.put(data_train)
     val_id = ray.put(data_val)
 
-    search_space = {'lr': 0.0008008715387630997,  # tune.loguniform(1e-4, 1e-1), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
-                    'alpha1': 0.001251181030793111,  # tune.loguniform(1e-3, 0.2), tune.grid_search([0.2, 0.1, 0.01, 0.001])
-                    'alpha2': 0.0003545419723740253,  # tune.loguniform(1e-5, 1e-2), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
-                    'batch_size': 32,
+    search_space = {'lr': 0.0029569524752282245,  # tune.loguniform(1e-4, 1e-1), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
+                    'alpha1': 0.004336309234750578,  # tune.loguniform(1e-3, 0.2), tune.grid_search([0.2, 0.1, 0.01, 0.001])
+                    'alpha2': 0.0008118556936647908,  # tune.loguniform(1e-5, 1e-2), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
+                    'batch_size': tune.grid_search([4096, 2048, 1024, 512, 256, 128, 64, 32, 16]),
                     'n_neurons1': 66,
                     'max_num_epochs': 200,
-                    'min_num_epochs': 40,
+                    'min_num_epochs': 30,
                     'checkpoint_interval': 10,
                     }
 
@@ -213,8 +213,8 @@ if __name__ == '__main__':
                     metric='mean_accuracy',
                     mode='max',
                     scheduler=scheduler_asha,
-                    search_alg=optuna_search,
-                    num_samples=200,
+                    # search_alg=optuna_search,
+                    # num_samples=200,
                     trial_dirname_creator=short_dirname,
                 ),
                 run_config=train.RunConfig(
