@@ -90,12 +90,15 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
                     param_group["alpha1"] = config["alpha1"]
                 if "alpha2" in config:
                     param_group["alpha2"] = config["alpha2"]
+    else:
+        acc_list = []
 
     for epoch in range(start, config['max_num_epochs'] + 1):
         train_loss, train_acc = train_func(train_loader, model, optimizer, loss_fn, get_pred, device)
         val_loss, val_acc = eval_func(val_loader, model, loss_fn, get_pred, device)
 
         if not ray_tune:
+            acc_list.append(val_acc)
             if early_stop_patience > 0:
                 if early_stopper.early_stop(val_loss):
                     break
@@ -122,8 +125,11 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
                 train.report(metrics)
 
     if not ray_tune:
-        print("Final epoch: %d, val_acc: %f \n"
+        max_acc = max(acc_list)
+        print("Final epoch: %d, val_acc: %f"
               % (epoch, float(val_acc)))
+        print("Best epoch: %d, val_acc: %f \n"
+              % (np.argmax(acc_list) + 1, float(max_acc)))
 
 
 if __name__ == '__main__':
@@ -147,19 +153,19 @@ if __name__ == '__main__':
     train_id = ray.put(data_train)
     val_id = ray.put(data_val)
 
-    search_space = {'lr': 0.001,  # tune.loguniform(1e-4, 1e-1),
-                    'alpha1': 0.1,  # tune.loguniform(1e-3, 0.2),
-                    'alpha2': 0.01,  # tune.loguniform(1e-5, 1e-2),
+    search_space = {'lr': 0.0008008715387630997,  # tune.loguniform(1e-4, 1e-1), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
+                    'alpha1': 0.001251181030793111,  # tune.loguniform(1e-3, 0.2), tune.grid_search([0.2, 0.1, 0.01, 0.001])
+                    'alpha2': 0.0003545419723740253,  # tune.loguniform(1e-5, 1e-2), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
                     'batch_size': 32,
                     'n_neurons1': 66,
-                    'max_num_epochs': 50,
+                    'max_num_epochs': 200,
                     'min_num_epochs': 40,
                     'checkpoint_interval': 10,
                     }
 
-    ray_tune = False
+    ray_tune = True
     resume = False
-    search_name = 'sst5_128_coral'
+    search_name = 'sst5_128'
 
     if ray_tune:
         # Run with Ray tune
