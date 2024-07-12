@@ -286,7 +286,7 @@ if __name__ == '__main__':
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
         plt.legend(loc='best')
-        plt.savefig('loss.png')
+        plt.savefig('images/loss.png')
 
         plt.figure(2)
         plt.plot(epochs, train_acc, label='Training accuracy')
@@ -295,4 +295,4 @@ if __name__ == '__main__':
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy')
         plt.legend(loc='best')
-        plt.savefig('acc.png')
+        plt.savefig('images/acc.png')
