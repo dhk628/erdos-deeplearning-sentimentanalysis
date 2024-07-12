@@ -2,4 +2,5 @@ __pycache__/
 .idea/
 codes/dohoon/.ray_results/
 codes/dohoon/data
+codes/dohoon/images
 data/
