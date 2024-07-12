@@ -180,7 +180,7 @@ if __name__ == '__main__':
         # 'weight_decay': 2.0933048278135712e-07,
         # 'dropout_p1': 0.4042863056742328,
         'input_dropout': 0,
-        'max_num_epochs': 500,
+        'max_num_epochs': 10,
         'min_num_epochs': 30,
         'checkpoint_interval': 10,
     }
@@ -278,6 +278,8 @@ if __name__ == '__main__':
         print("--- %s seconds ---" % (time.time() - start_time))
 
         epochs = range(1, len(train_loss) + 1)
+
+        plt.figure(1)
         plt.plot(epochs, train_loss, label='Training loss')
         plt.plot(epochs, val_loss, label='Validation loss')
         plt.title('Training and Validation Loss')
@@ -286,6 +288,7 @@ if __name__ == '__main__':
         plt.legend(loc='best')
         plt.savefig('loss.png')
 
+        plt.figure(2)
         plt.plot(epochs, train_acc, label='Training accuracy')
         plt.plot(epochs, val_acc, label='Validation accuracy')
         plt.title('Training and Validation Accuracy')
