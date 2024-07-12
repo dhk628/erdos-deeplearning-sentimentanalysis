@@ -76,7 +76,8 @@ if __name__ == '__main__':
     ray_tune = False
 
     data_train = RatingDataset(X_train, y_train, ohe=ohe)
-    data_val = RatingDataset(X_test, y_test, ohe=ohe)
+    data_val = RatingDataset(X_val, y_val, ohe=ohe)
+    data_test = RatingDataset(X_test, y_test, ohe=ohe)
 
     search_space = {'lr': 0.01,
                     'beta1': 0.9,

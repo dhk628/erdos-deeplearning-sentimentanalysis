@@ -30,7 +30,6 @@ from datetime import datetime
 from sklearn.feature_selection import SelectKBest, f_classif
 from ray.tune.stopper import TrialPlateauStopper
 
-
 RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('pc')
 
 
@@ -45,8 +44,9 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
     model = models.FeedForwardNet(
         input_size=in_features,
         output_size=out_features,
-        hidden_layers=[config['n_neurons1']],
-        dropout_p=[config.get('dropout_p1', 0)]
+        hidden_layers=[config['n_neurons1'], config.get('n_neurons2', 0)],
+        dropout_p=[config.get('dropout_p1', 0)],
+        input_dropout=config.get('input_dropout', 0)
     )
     model = model.to(device)
 
@@ -59,8 +59,8 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
 
     optimizer = optim.Adam(
         model.parameters(),
-        lr=config['lr'],
-        betas=(1 - config['alpha1'], 1 - config['alpha2']),
+        lr=config.get('lr', 1e-3),
+        betas=(1 - config.get('alpha1', 0.1), 1 - config.get('alpha2', 0.001)),
         weight_decay=config.get('weight_decay', 0)
     )
 
@@ -92,6 +92,7 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
                     param_group["alpha2"] = config["alpha2"]
     else:
         acc_list = []
+        train_loss_list = []
 
     for epoch in range(start, config['max_num_epochs'] + 1):
         train_loss, train_acc = train_func(train_loader, model, optimizer, loss_fn, get_pred, device)
@@ -99,6 +100,7 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
 
         if not ray_tune:
             acc_list.append(val_acc)
+            train_loss_list.append(train_loss)
             if early_stop_patience > 0:
                 if early_stopper.early_stop(val_loss):
                     break
@@ -126,16 +128,26 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
 
     if not ray_tune:
         max_acc = max(acc_list)
+        min_loss = min(train_loss_list)
         print("Final epoch: %d, val_acc: %f"
               % (epoch, float(val_acc)))
-        print("Best epoch: %d, val_acc: %f \n"
+        print("Best accuracy epoch: %d, val_acc: %f"
               % (np.argmax(acc_list) + 1, float(max_acc)))
+        print("Lowest loss epoch: %d, train_loss: %f \n"
+              % (np.argmin(train_loss_list) + 1, float(min_loss)))
+
+        return model
 
 
 if __name__ == '__main__':
     X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
         = get_data(sst5='original',
                    costco='none')
+
+    # X_train, X_val, X_test, y_train, y_val, y_test \
+    #     = get_data(sst5='original',
+    #                costco='none',
+    #                inner_split=False)
 
     feature_selector = SelectKBest(f_classif, k=128)
     X_train = feature_selector.fit_transform(X_train, y_train)
@@ -153,17 +165,23 @@ if __name__ == '__main__':
     train_id = ray.put(data_train)
     val_id = ray.put(data_val)
 
-    search_space = {'lr': 0.0029569524752282245,  # tune.loguniform(1e-4, 1e-1), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
-                    'alpha1': 0.004336309234750578,  # tune.loguniform(1e-3, 0.2), tune.grid_search([0.2, 0.1, 0.01, 0.001])
-                    'alpha2': 0.0008118556936647908,  # tune.loguniform(1e-5, 1e-2), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
-                    'batch_size': tune.grid_search([4096, 2048, 1024, 512, 256, 128, 64, 32, 16]),
-                    'n_neurons1': 66,
-                    'max_num_epochs': 200,
-                    'min_num_epochs': 30,
-                    'checkpoint_interval': 10,
-                    }
+    search_space = {
+        # 'lr': 0.0029569524752282245,  # tune.loguniform(1e-4, 1e-1), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
+        # 'alpha1': 0.004336309234750578,  # tune.loguniform(1e-3, 0.2), tune.grid_search([0.2, 0.1, 0.01, 0.001])
+        # 'alpha2': 0.0008118556936647908,  # tune.loguniform(1e-5, 1e-2), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
+        'lr': 1e-3,
+        'batch_size': 32,
+        'n_neurons1': 66,  # tune.randint(5, 256),
+        # 'n_neurons2': 79,
+        # 'weight_decay': 2.0933048278135712e-07,
+        # 'dropout_p1': 0.4042863056742328,
+        'input_dropout': 0,
+        'max_num_epochs': 10000,
+        'min_num_epochs': 30,
+        'checkpoint_interval': 10,
+    }
 
-    ray_tune = True
+    ray_tune = False
     resume = False
     search_name = 'sst5_128'
 
@@ -190,7 +208,6 @@ if __name__ == '__main__':
             metric="mean_accuracy",
             mode="max",
             seed=123,
-            points_to_evaluate=[{'lr': 0.0011667300285897403, 'alpha1': 0.0010889159512101896, 'alpha2': 7.094804335419697e-05}]
         )
 
         trial_stopper = TrialPlateauStopper(
@@ -213,8 +230,8 @@ if __name__ == '__main__':
                     metric='mean_accuracy',
                     mode='max',
                     scheduler=scheduler_asha,
-                    # search_alg=optuna_search,
-                    # num_samples=200,
+                    search_alg=optuna_search,
+                    num_samples=200,
                     trial_dirname_creator=short_dirname,
                 ),
                 run_config=train.RunConfig(
@@ -248,7 +265,7 @@ if __name__ == '__main__':
     else:
         # Run without Ray tune
         start_time = time.time()
-        train_model(
+        trained_model = train_model(
             search_space,
             print_interval=1,
             # early_stop_patience=2,

@@ -29,7 +29,7 @@ class RatingDataset(Dataset):
         return vector, rating, ratings_original
 
 
-def get_data(sst5='original', costco='none'):
+def get_data(sst5='original', costco='none', inner_split=True):
     df_train = pd.read_parquet('data/sst5/sst-5_train.parquet').rename(
         columns={'truth': 'rating', 'vectors': 'vector'})
     df_val = pd.read_parquet('data/sst5/sst-5_validation.parquet').rename(
@@ -67,7 +67,12 @@ def get_data(sst5='original', costco='none'):
         y_val_s -= np.array(1)
         y_test_s -= np.array(1)
 
-    return X_train, X_val, X_val_s, X_test_s, y_train, y_val, y_val_s, y_test_s
+    if inner_split:
+        return X_train, X_val, X_val_s, X_test_s, y_train, y_val, y_val_s, y_test_s
+    else:
+        X_train = np.vstack([X_train, X_val])
+        y_train = np.hstack([y_train, y_val])
+        return X_train, X_val_s, X_test_s, y_train, y_val_s, y_test_s
 
 
 def load_data(dataset, batch_size, generator):
