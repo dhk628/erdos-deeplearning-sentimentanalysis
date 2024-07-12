@@ -73,6 +73,11 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
     else:
         get_pred = get_argmax
 
+    val_loss_list = []
+    val_acc_list = []
+    train_loss_list = []
+    train_acc_list = []
+
     if ray_tune:
         checkpoint = train.get_checkpoint()
         if checkpoint:
@@ -90,17 +95,16 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
                     param_group["alpha1"] = config["alpha1"]
                 if "alpha2" in config:
                     param_group["alpha2"] = config["alpha2"]
-    else:
-        acc_list = []
-        train_loss_list = []
 
     for epoch in range(start, config['max_num_epochs'] + 1):
         train_loss, train_acc = train_func(train_loader, model, optimizer, loss_fn, get_pred, device)
         val_loss, val_acc = eval_func(val_loader, model, loss_fn, get_pred, device)
 
         if not ray_tune:
-            acc_list.append(val_acc)
+            val_loss_list.append(val_loss)
+            val_acc_list.append(val_acc)
             train_loss_list.append(train_loss)
+            train_acc_list.append(train_acc)
             if early_stop_patience > 0:
                 if early_stopper.early_stop(val_loss):
                     break
@@ -127,16 +131,16 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
                 train.report(metrics)
 
     if not ray_tune:
-        max_acc = max(acc_list)
+        max_acc = max(val_acc_list)
         min_loss = min(train_loss_list)
         print("Final epoch: %d, val_acc: %f"
               % (epoch, float(val_acc)))
         print("Best accuracy epoch: %d, val_acc: %f"
-              % (np.argmax(acc_list) + 1, float(max_acc)))
-        print("Lowest loss epoch: %d, train_loss: %f \n"
-              % (np.argmin(train_loss_list) + 1, float(min_loss)))
+              % (np.argmax(val_acc_list) + 1, float(max_acc)))
+        # print("Lowest loss epoch: %d, train_loss: %f \n"
+        #       % (np.argmin(train_loss_list) + 1, float(min_loss)))
 
-        return model
+        return model, train_loss_list, val_loss_list, train_acc_list, val_acc_list
 
 
 if __name__ == '__main__':
@@ -169,14 +173,14 @@ if __name__ == '__main__':
         # 'lr': 0.0029569524752282245,  # tune.loguniform(1e-4, 1e-1), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
         # 'alpha1': 0.004336309234750578,  # tune.loguniform(1e-3, 0.2), tune.grid_search([0.2, 0.1, 0.01, 0.001])
         # 'alpha2': 0.0008118556936647908,  # tune.loguniform(1e-5, 1e-2), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
-        'lr': 1e-3,
+        'lr': 1e-2,
         'batch_size': 32,
         'n_neurons1': 66,  # tune.randint(5, 256),
         # 'n_neurons2': 79,
         # 'weight_decay': 2.0933048278135712e-07,
         # 'dropout_p1': 0.4042863056742328,
         'input_dropout': 0,
-        'max_num_epochs': 10000,
+        'max_num_epochs': 500,
         'min_num_epochs': 30,
         'checkpoint_interval': 10,
     }
@@ -265,10 +269,27 @@ if __name__ == '__main__':
     else:
         # Run without Ray tune
         start_time = time.time()
-        trained_model = train_model(
+        trained_model, train_loss, val_loss, train_acc, val_acc = train_model(
             search_space,
             print_interval=1,
             # early_stop_patience=2,
             # early_stop_min_delta=0.001
         )
         print("--- %s seconds ---" % (time.time() - start_time))
+
+        epochs = range(1, len(train_loss) + 1)
+        plt.plot(epochs, train_loss, label='Training loss')
+        plt.plot(epochs, val_loss, label='Validation loss')
+        plt.title('Training and Validation Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend(loc='best')
+        plt.savefig('loss.png')
+
+        plt.plot(epochs, train_acc, label='Training accuracy')
+        plt.plot(epochs, val_acc, label='Validation accuracy')
+        plt.title('Training and Validation Accuracy')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend(loc='best')
+        plt.savefig('acc.png')
