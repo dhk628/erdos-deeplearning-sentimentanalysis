@@ -1,5 +1,5 @@
 from initialization import set_seed, use_gpu, set_ray_settings, short_dirname
-from data import RatingDataset, get_data, load_data, load_data_from_ray
+from data import RatingDataset, get_data, load_data, load_data_from_ray, get_aug_data, add_aug_data
 from neural_network import train_func, eval_func, test_model, get_argmax, get_model_structure, save_model_structure, \
     EarlyStopper
 from evaluation import evaluate_model, save_evaluation
@@ -45,13 +45,13 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
         input_size=in_features,
         output_size=out_features,
         hidden_layers=[config['n_neurons1'], config.get('n_neurons2', 0)],
-        dropout_p=[config.get('dropout_p1', 0)],
+        dropout_p=[config.get('dropout_p1', 0), config.get('dropout_p2', 0)],
         input_dropout=config.get('input_dropout', 0)
     )
     model = model.to(device)
 
     if ohe == 'coral':
-        loss_fn = CoralLoss()  # CoralLoss() or nn.MSELoss()
+        loss_fn = nn.MSELoss()  # CoralLoss() or nn.MSELoss()
     elif ohe == 'corn':
         loss_fn = CornLoss(5)
     else:
@@ -105,6 +105,8 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
             val_acc_list.append(val_acc)
             train_loss_list.append(train_loss)
             train_acc_list.append(train_acc)
+            # if train_acc >= 0.7:
+            #     break
             if early_stop_patience > 0:
                 if early_stopper.early_stop(val_loss):
                     break
@@ -112,7 +114,7 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
                 print("Epoch: %d, train_loss: %f, val_loss: %f, train_acc: %f, val_acc: %f"
                       % (epoch, float(train_loss), float(val_loss), float(train_acc), float(val_acc)))
         else:
-            metrics = {'mean_accuracy': val_acc, 'mean_loss': val_loss}
+            metrics = {'val_acc': val_acc, 'val_loss': val_loss, 'train_acc': train_acc, 'train_loss': train_loss}
             if epoch % config['checkpoint_interval'] == 0:
                 with tempfile.TemporaryDirectory() as tempdir:
                     torch.save(
@@ -131,15 +133,21 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
                 train.report(metrics)
 
     if not ray_tune:
-        max_acc = max(val_acc_list)
-        min_loss = min(train_loss_list)
+        max_val_acc = max(val_acc_list)
+        max_train_acc = max(train_acc_list)
+        min_val_loss = min(val_loss_list)
+        min_train_loss = min(train_loss_list)
         print("Final epoch: %d, val_acc: %f"
               % (epoch, float(val_acc)))
-        print("Best accuracy epoch: %d, val_acc: %f"
-              % (np.argmax(val_acc_list) + 1, float(max_acc)))
-        # print("Lowest loss epoch: %d, train_loss: %f \n"
-        #       % (np.argmin(train_loss_list) + 1, float(min_loss)))
-
+        print("Highest validation accuracy @ epoch: %d, val_acc: %f"
+              % (np.argmax(val_acc_list) + 1, float(max_val_acc)))
+        print("Highest training accuracy @ epoch: %d, train_acc: %f"
+              % (np.argmax(train_acc_list) + 1, float(max_train_acc)))
+        print("Lowest validation loss @ epoch: %d, val_loss: %f"
+              % (np.argmin(val_loss_list) + 1, float(min_val_loss)))
+        print("Lowest training loss @ epoch: %d, train_loss: %f"
+              % (np.argmin(train_loss_list) + 1, float(min_train_loss)))
+        print('\n')
         return model, train_loss_list, val_loss_list, train_acc_list, val_acc_list
 
 
@@ -148,21 +156,32 @@ if __name__ == '__main__':
         = get_data(sst5='original',
                    costco='none')
 
-    # X_train, X_val, X_test, y_train, y_val, y_test \
-    #     = get_data(sst5='original',
-    #                costco='none',
-    #                inner_split=False)
+    X_train, y_train = add_aug_data(X_train, y_train, 'data/sst5/aug/sst-5_aug_2.parquet')
 
-    feature_selector = SelectKBest(f_classif, k=128)
-    X_train = feature_selector.fit_transform(X_train, y_train)
-    X_val = feature_selector.transform(X_val)
+    condition = None
+    if condition:
+        df_train = pd.DataFrame({'vector': [x for x in X_train], 'rating': y_train})
+        df_train = df_train[df_train['rating'].isin(condition)]
+        X_train = np.vstack(df_train['vector'].tolist())
+        y_train = np.vstack(df_train['rating'].tolist()).reshape(-1)
+        y_train = np.array([condition.index(x) for x in y_train])
+
+        df_val = pd.DataFrame({'vector': [x for x in X_val], 'rating': y_val})
+        df_val = df_val[df_val['rating'].isin(condition)]
+        X_val = np.vstack(df_val['vector'].tolist())
+        y_val = np.vstack(df_val['rating'].tolist()).reshape(-1)
+        y_val = np.array([condition.index(x) for x in y_val])
+
+    # feature_selector = SelectKBest(f_classif, k=256)
+    # X_train = feature_selector.fit_transform(X_train, y_train)
+    # X_val = feature_selector.transform(X_val)
 
     ohe = 'none'
     in_features = X_train.shape[1]
     if ohe == ('coral' or 'corn'):
-        out_features = 4
+        out_features = len(np.unique(y_train)) - 1
     else:
-        out_features = 5
+        out_features = len(np.unique(y_train))
 
     data_train = RatingDataset(X_train, y_train, ohe=ohe)
     data_val = RatingDataset(X_val, y_val, ohe=ohe)
@@ -170,23 +189,24 @@ if __name__ == '__main__':
     val_id = ray.put(data_val)
 
     search_space = {
-        # 'lr': 0.0029569524752282245,  # tune.loguniform(1e-4, 1e-1), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
-        # 'alpha1': 0.004336309234750578,  # tune.loguniform(1e-3, 0.2), tune.grid_search([0.2, 0.1, 0.01, 0.001])
-        # 'alpha2': 0.0008118556936647908,  # tune.loguniform(1e-5, 1e-2), tune.grid_search([0.1, 0.01, 0.001, 0.0001])
-        'lr': 1e-2,
+        'lr': 1e-1,
+        # 'alpha_1': 1e-1,
+        # 'alpha_2': 1e-3,
         'batch_size': 32,
-        'n_neurons1': 66,  # tune.randint(5, 256),
-        # 'n_neurons2': 79,
-        # 'weight_decay': 2.0933048278135712e-07,
-        # 'dropout_p1': 0.4042863056742328,
+        'n_neurons1': 512,
+        'n_neurons2': 0,
+        'weight_decay': 0,
+        'dropout_p1': 0,
+        'dropout_p2': 0,
         'input_dropout': 0,
-        'max_num_epochs': 10,
-        'min_num_epochs': 30,
+        'max_num_epochs': 100,
+        'min_num_epochs': 60,
         'checkpoint_interval': 10,
     }
 
     ray_tune = False
     resume = False
+    save_plot = True
     search_name = 'sst5_128'
 
     if ray_tune:
@@ -209,13 +229,14 @@ if __name__ == '__main__':
         )
 
         optuna_search = OptunaSearch(
-            metric="mean_accuracy",
-            mode="max",
+            metric="train_loss",
+            mode="min",
             seed=123,
+            points_to_evaluate=[{'lr': 1e-2, 'alpha_1': 1e-1, 'alpha_2': 1e-3}],
         )
 
         trial_stopper = TrialPlateauStopper(
-            metric='mean_accuracy',
+            metric='val_acc',
             std=0.0025,
             num_results=4,
             grace_period=search_space['min_num_epochs'],
@@ -231,17 +252,17 @@ if __name__ == '__main__':
                 ),
                 param_space=search_space,
                 tune_config=tune.TuneConfig(
-                    metric='mean_accuracy',
-                    mode='max',
+                    metric='train_loss',
+                    mode='min',
                     scheduler=scheduler_asha,
                     search_alg=optuna_search,
-                    num_samples=200,
+                    num_samples=100,
                     trial_dirname_creator=short_dirname,
                 ),
                 run_config=train.RunConfig(
                     name=search_name + '-' + datetime.now().strftime('%Y%m%d_%H%M%S'),
                     storage_path=RAY_RESULTS_PATH,
-                    stop=trial_stopper,
+                    # stop=trial_stopper,
                 )
             )
         else:
@@ -258,9 +279,14 @@ if __name__ == '__main__':
 
         results = tuner.fit()
 
-        best_result = results.get_best_result("mean_accuracy", mode="max")
+        # best_result = results.get_best_result("val_acc", mode="max")
+        # best_config = best_result.config
+        # best_acc = best_result.metrics['val_acc']
+        # best_result_epochs = best_result.metrics['training_iteration']
+
+        best_result = results.get_best_result("train_loss", mode="min")
         best_config = best_result.config
-        best_acc = best_result.metrics['mean_accuracy']
+        best_acc = best_result.metrics['train_acc']
         best_result_epochs = best_result.metrics['training_iteration']
 
         print('Best config: ' + str(best_config))
@@ -271,7 +297,7 @@ if __name__ == '__main__':
         start_time = time.time()
         trained_model, train_loss, val_loss, train_acc, val_acc = train_model(
             search_space,
-            print_interval=1,
+            print_interval=5,
             # early_stop_patience=2,
             # early_stop_min_delta=0.001
         )
@@ -279,20 +305,21 @@ if __name__ == '__main__':
 
         epochs = range(1, len(train_loss) + 1)
 
-        plt.figure(1)
-        plt.plot(epochs, train_loss, label='Training loss')
-        plt.plot(epochs, val_loss, label='Validation loss')
-        plt.title('Training and Validation Loss')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.legend(loc='best')
-        plt.savefig('images_all/loss.png')
+        if save_plot:
+            plt.figure(1)
+            plt.plot(epochs, train_loss, label='Training loss')
+            plt.plot(epochs, val_loss, label='Validation loss')
+            plt.title('Training and Validation Loss')
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            plt.legend(loc='best')
+            plt.savefig('images_all/loss.png')
 
-        plt.figure(2)
-        plt.plot(epochs, train_acc, label='Training accuracy')
-        plt.plot(epochs, val_acc, label='Validation accuracy')
-        plt.title('Training and Validation Accuracy')
-        plt.xlabel('Epochs')
-        plt.ylabel('Accuracy')
-        plt.legend(loc='best')
-        plt.savefig('images_all/acc.png')
+            plt.figure(2)
+            plt.plot(epochs, train_acc, label='Training accuracy')
+            plt.plot(epochs, val_acc, label='Validation accuracy')
+            plt.title('Training and Validation Accuracy')
+            plt.xlabel('Epochs')
+            plt.ylabel('Accuracy')
+            plt.legend(loc='best')
+            plt.savefig('images_all/acc.png')
