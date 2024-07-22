@@ -38,14 +38,18 @@ def get_data(sst5='original', costco='none', inner_split=True):
         columns={'truth': 'rating', 'vectors': 'vector'})
 
     # ndarray: (-1, 1024)
-    X_train_s = np.vstack(df_train['vector'].tolist())
-    X_val_s = np.vstack(df_val['vector'].tolist())
-    X_test_s = np.vstack(df_test['vector'].tolist())
+    X_train_s = np.vstack(df_train['vector'].tolist()).astype(np.float32)
+    X_val_s = np.vstack(df_val['vector'].tolist()).astype(np.float32)
+    X_test_s = np.vstack(df_test['vector'].tolist()).astype(np.float32)
 
     # ndarray: (-1)
     y_train_s = np.vstack(df_train['rating'].tolist()).reshape(-1)
     y_val_s = np.vstack(df_val['rating'].tolist()).reshape(-1)
     y_test_s = np.vstack(df_test['rating'].tolist()).reshape(-1)
+
+    X_train_s, X_inner_val_s, y_train_s, y_inner_val_s = train_test_split(X_train_s, y_train_s, test_size=0.15,
+                                                                      random_state=123,
+                                                                      shuffle=True, stratify=y_train_s)
 
     if costco == 'under':
         X_train_c = np.load('data/costco_google_reviews/vector_under.npy')
@@ -58,21 +62,37 @@ def get_data(sst5='original', costco='none', inner_split=True):
         X_train = X_train_s
         y_train = y_train_s
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.15, random_state=123,
-                                                      shuffle=True, stratify=y_train)
-
-    if np.min(y_train) != 0 and np.min(y_val) != 0 and np.min(y_val_s) != 0 and np.min(y_test_s) != 0:
+    if np.min(y_train) != 0 and np.min(y_inner_val_s) != 0 and np.min(y_val_s) != 0 and np.min(y_test_s) != 0:
         y_train -= np.array(1)
-        y_val -= np.array(1)
+        y_inner_val_s -= np.array(1)
         y_val_s -= np.array(1)
         y_test_s -= np.array(1)
 
     if inner_split:
-        return X_train, X_val, X_val_s, X_test_s, y_train, y_val, y_val_s, y_test_s
+        return X_train, X_inner_val_s, X_val_s, X_test_s, y_train, y_inner_val_s, y_val_s, y_test_s
     else:
-        X_train = np.vstack([X_train, X_val])
-        y_train = np.hstack([y_train, y_val])
+        X_train = np.vstack([X_train, X_inner_val_s])
+        y_train = np.hstack([y_train, y_inner_val_s])
         return X_train, X_val_s, X_test_s, y_train, y_val_s, y_test_s
+
+
+def get_aug_data(path):
+    df = pd.read_parquet(path)
+    X_train = np.vstack(df['vector'].tolist()).astype(np.float32)
+    y_train = np.vstack(df['rating'].tolist()).reshape(-1)
+
+    if np.min(y_train) != 0:
+        y_train -= np.array(1)
+
+    return X_train, y_train
+
+
+def add_aug_data(X_train, y_train, path):
+    X_aug, y_aug = get_aug_data(path)
+    X_train = np.vstack((X_train, X_aug))
+    y_train = np.hstack((y_train, y_aug))
+
+    return X_train, y_train
 
 
 def load_data(dataset, batch_size, generator):
