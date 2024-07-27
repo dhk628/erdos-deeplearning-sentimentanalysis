@@ -6,6 +6,7 @@ from evaluation import evaluate_model, save_evaluation
 import models
 
 import os
+import copy
 import time
 import tempfile
 import matplotlib.pyplot as plt
@@ -29,8 +30,9 @@ from ray.train import Checkpoint
 from datetime import datetime
 from sklearn.feature_selection import SelectKBest, f_classif
 from ray.tune.stopper import TrialPlateauStopper
+from sklearn.preprocessing import StandardScaler
 
-RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('pc')
+RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('math_a')
 
 
 def train_model(config, print_interval=None, early_stop_patience=0, early_stop_min_delta=0.0):
@@ -78,6 +80,9 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
     train_loss_list = []
     train_acc_list = []
 
+    checkpt1, checkpt2, checkpt3 = -1, -1, -1
+    passed_1, passed_2, passed_3 = False, False, False
+
     if ray_tune:
         checkpoint = train.get_checkpoint()
         if checkpoint:
@@ -105,8 +110,16 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
             val_acc_list.append(val_acc)
             train_loss_list.append(train_loss)
             train_acc_list.append(train_acc)
-            # if train_acc >= 0.7:
-            #     break
+            if train_acc >= 0.6 and not passed_1:
+                checkpt1 = copy.deepcopy(epoch)
+                passed_1 = True
+            if train_acc >= 0.65 and not passed_2:
+                checkpt2 = copy.deepcopy(epoch)
+                passed_2 = True
+            if train_acc >= 0.7 and not passed_3:
+                checkpt3 = copy.deepcopy(epoch)
+                passed_3 = True
+                break
             if early_stop_patience > 0:
                 if early_stopper.early_stop(val_loss):
                     break
@@ -147,6 +160,12 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
               % (np.argmin(val_loss_list) + 1, float(min_val_loss)))
         print("Lowest training loss @ epoch: %d, train_loss: %f"
               % (np.argmin(train_loss_list) + 1, float(min_train_loss)))
+        if checkpt1 > 0:
+            print('60%% epoch: %d' % checkpt1)
+        if checkpt2 > 0:
+            print('65%% epoch: %d' % checkpt2)
+        if checkpt3 > 0:
+            print('70%% epoch: %d' % checkpt3)
         print('\n')
         return model, train_loss_list, val_loss_list, train_acc_list, val_acc_list
 
@@ -156,7 +175,7 @@ if __name__ == '__main__':
         = get_data(sst5='original',
                    costco='none')
 
-    X_train, y_train = add_aug_data(X_train, y_train, 'data/sst5/aug/sst-5_aug_2.parquet')
+    # X_train, y_train = add_aug_data(X_train, y_train, 'data/sst5/aug/sst-5_aug_2.parquet')
 
     condition = None
     if condition:
@@ -176,6 +195,18 @@ if __name__ == '__main__':
     # X_train = feature_selector.fit_transform(X_train, y_train)
     # X_val = feature_selector.transform(X_val)
 
+    # X_train, y_train = RandomOverSampler(random_state=123).fit_resample(X_train, y_train)
+
+    # scaler = StandardScaler()
+    # X_train = scaler.fit_transform(X_train)
+    # X_val = scaler.transform(X_val)
+
+    # # If running on dev set
+    # X_train = np.vstack([X_train, X_val])
+    # y_train = np.hstack([y_train, y_val])
+    # X_val = X_outer_val
+    # y_val = y_outer_val
+
     ohe = 'none'
     in_features = X_train.shape[1]
     if ohe == ('coral' or 'corn'):
@@ -189,25 +220,25 @@ if __name__ == '__main__':
     val_id = ray.put(data_val)
 
     search_space = {
-        'lr': 1e-1,
-        # 'alpha_1': 1e-1,
-        # 'alpha_2': 1e-3,
-        'batch_size': 32,
-        'n_neurons1': 512,
+        'lr': 6.824866440447709e-05,
+        'alpha1': 0.07344494001128585,
+        'alpha2': 0.000442504638714582,
+        'batch_size': 128,
+        'n_neurons1': 251,
         'n_neurons2': 0,
-        'weight_decay': 0,
-        'dropout_p1': 0,
-        'dropout_p2': 0,
+        'weight_decay': 9.759987185620835e-06,
         'input_dropout': 0,
-        'max_num_epochs': 100,
-        'min_num_epochs': 60,
+        'dropout_p1': 0.3889505741231446,
+        'dropout_p2': 0,
+        'max_num_epochs': 200,
+        'min_num_epochs': 10,
         'checkpoint_interval': 10,
     }
 
     ray_tune = False
     resume = False
     save_plot = True
-    search_name = 'sst5_128'
+    search_name = 'sst5'
 
     if ray_tune:
         # Run with Ray tune
@@ -229,10 +260,10 @@ if __name__ == '__main__':
         )
 
         optuna_search = OptunaSearch(
-            metric="train_loss",
+            metric="val_loss",
             mode="min",
             seed=123,
-            points_to_evaluate=[{'lr': 1e-2, 'alpha_1': 1e-1, 'alpha_2': 1e-3}],
+            # points_to_evaluate=[{'lr': 1e-2, 'alpha1': 1e-1, 'alpha2': 1e-3}],
         )
 
         trial_stopper = TrialPlateauStopper(
@@ -252,11 +283,11 @@ if __name__ == '__main__':
                 ),
                 param_space=search_space,
                 tune_config=tune.TuneConfig(
-                    metric='train_loss',
+                    metric='val_loss',
                     mode='min',
                     scheduler=scheduler_asha,
-                    search_alg=optuna_search,
-                    num_samples=100,
+                    # search_alg=optuna_search,
+                    # num_samples=100,
                     trial_dirname_creator=short_dirname,
                 ),
                 run_config=train.RunConfig(
@@ -284,22 +315,24 @@ if __name__ == '__main__':
         # best_acc = best_result.metrics['val_acc']
         # best_result_epochs = best_result.metrics['training_iteration']
 
-        best_result = results.get_best_result("train_loss", mode="min")
+        best_result = results.get_best_result("val_loss", mode="min")
         best_config = best_result.config
-        best_acc = best_result.metrics['train_acc']
+        best_loss = best_result.metrics['val_loss']
+        best_acc = best_result.metrics['val_acc']
         best_result_epochs = best_result.metrics['training_iteration']
 
         print('Best config: ' + str(best_config))
-        print('Best accuracy: ' + str(best_acc))
+        print('Lowest loss: ' + str(best_loss))
+        print('Highest accuracy: ' + str(best_acc))
         print('Epochs: ' + str(best_result_epochs))
     else:
         # Run without Ray tune
         start_time = time.time()
         trained_model, train_loss, val_loss, train_acc, val_acc = train_model(
             search_space,
-            print_interval=5,
-            # early_stop_patience=2,
-            # early_stop_min_delta=0.001
+            print_interval=1,
+            early_stop_patience=2,
+            early_stop_min_delta=0.005
         )
         print("--- %s seconds ---" % (time.time() - start_time))
 

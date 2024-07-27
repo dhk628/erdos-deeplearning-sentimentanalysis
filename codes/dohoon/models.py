@@ -3,8 +3,10 @@ from torch.nn import functional as F
 
 
 class FeedForwardNet(nn.Module):
-    def __init__(self, input_size, output_size, hidden_layers, dropout_p, input_dropout=0):
+    def __init__(self, input_size, output_size, hidden_layers, dropout_p=None, input_dropout=0):
         super().__init__()
+        if dropout_p is None:
+            dropout_p = [0]
         hidden_layers = [i for i in hidden_layers if i != 0]
 
         if input_dropout > 0:

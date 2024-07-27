@@ -48,8 +48,8 @@ def get_data(sst5='original', costco='none', inner_split=True):
     y_test_s = np.vstack(df_test['rating'].tolist()).reshape(-1)
 
     X_train_s, X_inner_val_s, y_train_s, y_inner_val_s = train_test_split(X_train_s, y_train_s, test_size=0.15,
-                                                                      random_state=123,
-                                                                      shuffle=True, stratify=y_train_s)
+                                                                          random_state=123,
+                                                                          shuffle=True, stratify=y_train_s)
 
     if costco == 'under':
         X_train_c = np.load('data/costco_google_reviews/vector_under.npy')
