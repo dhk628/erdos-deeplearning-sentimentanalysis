@@ -29,12 +29,15 @@ class RatingDataset(Dataset):
         return vector, rating, ratings_original
 
 
-def get_data(sst5='original', costco='none', inner_split=True):
-    df_train = pd.read_parquet('data/sst5/sst-5_train.parquet').rename(
+def get_data(sst5='original', costco='none', inner_split=True, path=None):
+    if path is None:
+        path = 'data/sst5/'
+
+    df_train = pd.read_parquet(path + 'sst-5_train.parquet').rename(
         columns={'truth': 'rating', 'vectors': 'vector'})
-    df_val = pd.read_parquet('data/sst5/sst-5_validation.parquet').rename(
+    df_val = pd.read_parquet(path + 'sst-5_validation.parquet').rename(
         columns={'truth': 'rating', 'vectors': 'vector'})
-    df_test = pd.read_parquet('data/sst5/sst-5_test.parquet').rename(
+    df_test = pd.read_parquet(path + 'sst-5_test.parquet').rename(
         columns={'truth': 'rating', 'vectors': 'vector'})
 
     # ndarray: (-1, 1024)
@@ -73,7 +76,7 @@ def get_data(sst5='original', costco='none', inner_split=True):
     else:
         X_train = np.vstack([X_train, X_inner_val_s])
         y_train = np.hstack([y_train, y_inner_val_s])
-        return X_train, X_val_s, X_test_s, y_train, y_val_s, y_test_s
+        return X_train, X_val_s, None, X_test_s, y_train, y_val_s, None, y_test_s
 
 
 def get_aug_data(path):

@@ -31,6 +31,7 @@ from datetime import datetime
 from sklearn.feature_selection import SelectKBest, f_classif
 from ray.tune.stopper import TrialPlateauStopper
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix, root_mean_squared_error, ConfusionMatrixDisplay
 
 RAY_RESULTS_PATH, RAY_RESOURCES = set_ray_settings('math_a')
 
@@ -46,7 +47,7 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
     model = models.FeedForwardNet(
         input_size=in_features,
         output_size=out_features,
-        hidden_layers=[config['n_neurons1'], config.get('n_neurons2', 0)],
+        hidden_layers=[config['n_neurons1'], config.get('n_neurons2', 0), config.get('n_neurons3', 0)],
         dropout_p=[config.get('dropout_p1', 0), config.get('dropout_p2', 0)],
         input_dropout=config.get('input_dropout', 0)
     )
@@ -119,7 +120,7 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
             if train_acc >= 0.7 and not passed_3:
                 checkpt3 = copy.deepcopy(epoch)
                 passed_3 = True
-                break
+                # break
             if early_stop_patience > 0:
                 if early_stopper.early_stop(val_loss):
                     break
@@ -173,6 +174,7 @@ def train_model(config, print_interval=None, early_stop_patience=0, early_stop_m
 if __name__ == '__main__':
     X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
         = get_data(sst5='original',
+                   inner_split=True,
                    costco='none')
 
     # X_train, y_train = add_aug_data(X_train, y_train, 'data/sst5/aug/sst-5_aug_2.parquet')
@@ -207,7 +209,7 @@ if __name__ == '__main__':
     # X_val = X_outer_val
     # y_val = y_outer_val
 
-    ohe = 'none'
+    ohe = 'coral'
     in_features = X_train.shape[1]
     if ohe == ('coral' or 'corn'):
         out_features = len(np.unique(y_train)) - 1
@@ -220,17 +222,18 @@ if __name__ == '__main__':
     val_id = ray.put(data_val)
 
     search_space = {
-        'lr': 6.824866440447709e-05,
+        'lr': 3.4003933256295715e-05,
         'alpha1': 0.07344494001128585,
         'alpha2': 0.000442504638714582,
-        'batch_size': 128,
-        'n_neurons1': 251,
-        'n_neurons2': 0,
-        'weight_decay': 9.759987185620835e-06,
+        'batch_size': 64,
+        'n_neurons1': 10,
+        'n_neurons2': 969,
+        'n_neurons3': 0,
+        'weight_decay': 6.169063238171836e-06,
         'input_dropout': 0,
-        'dropout_p1': 0.3889505741231446,
+        'dropout_p1': 0,
         'dropout_p2': 0,
-        'max_num_epochs': 200,
+        'max_num_epochs': 500,
         'min_num_epochs': 10,
         'checkpoint_interval': 10,
     }
@@ -286,8 +289,8 @@ if __name__ == '__main__':
                     metric='val_loss',
                     mode='min',
                     scheduler=scheduler_asha,
-                    # search_alg=optuna_search,
-                    # num_samples=100,
+                    search_alg=optuna_search,
+                    num_samples=100,
                     trial_dirname_creator=short_dirname,
                 ),
                 run_config=train.RunConfig(
@@ -330,9 +333,9 @@ if __name__ == '__main__':
         start_time = time.time()
         trained_model, train_loss, val_loss, train_acc, val_acc = train_model(
             search_space,
-            print_interval=1,
-            early_stop_patience=2,
-            early_stop_min_delta=0.005
+            print_interval=10,
+            # early_stop_patience=2,
+            # early_stop_min_delta=0.005
         )
         print("--- %s seconds ---" % (time.time() - start_time))
 
