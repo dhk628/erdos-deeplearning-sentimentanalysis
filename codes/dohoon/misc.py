@@ -19,7 +19,7 @@ X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
     = get_data(sst5='original',
                costco='none',
                inner_split=False,
-               path='data/sst5/fine_tuned/0730/'  # None or 'data/sst5/fine_tuned/0730/'
+               path='data/sst5/fine_tuned/0811/'  # None or 'data/sst5/fine_tuned/0730/'
                )
 
 # texts_train = df_train['text'].tolist()
@@ -45,18 +45,18 @@ X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
 # scaler = StandardScaler()
 # X_train = scaler.fit_transform(X_train_sim)
 # X_val = scaler.transform(X_val_sim)
-#
-# logreg = LogisticRegression(multi_class='ovr', n_jobs=-1)
-# logreg.fit(X_train, y_train)
-# y_pred = logreg.predict(X_val)
-#
-# acc = accuracy_score(y_val, y_pred)
-# rmse = root_mean_squared_error(y_val, y_pred)
-# cm = confusion_matrix(y_val, y_pred, normalize='true')
-#
-# print('Accuracy: %f' % acc)
-# print('RMSE: %f' % rmse)
-#
-# disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.array([1, 2, 3, 4, 5]))
-# disp.plot()
-# plt.show()
+
+logreg = LogisticRegression(multi_class='ovr', n_jobs=-1)
+logreg.fit(X_train, y_train)
+y_pred = logreg.predict(X_val)
+
+acc = accuracy_score(y_val, y_pred)
+rmse = root_mean_squared_error(y_val, y_pred)
+cm = confusion_matrix(y_val, y_pred, normalize='true')
+
+print('Accuracy: %f' % acc)
+print('RMSE: %f' % rmse)
+
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.array([1, 2, 3, 4, 5]))
+disp.plot()
+plt.show()
