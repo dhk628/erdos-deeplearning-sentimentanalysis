@@ -1,1 +1,1 @@
-# erdos-dl-companydiscourse
+A more detailed explanation can be found in the [wiki](https://github.com/dhk628/erdos-deeplearning-sentimentanalysis/wiki).
