@@ -17,7 +17,7 @@ import time
 np.random.seed(123)
 random.seed(123)
 
-df_train = pd.read_parquet('data/sst5/sst-5_train.parquet')
+df_train = pd.read_parquet('../data/sst5/sst-5_train.parquet')
 df_train, df_val = train_test_split(df_train, test_size=0.15, random_state=123, shuffle=True, stratify=df_train['truth'])
 X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
     = get_data(sst5='original',

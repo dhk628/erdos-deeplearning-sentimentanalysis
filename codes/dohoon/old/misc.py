@@ -12,14 +12,14 @@ from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 
-df_train = pd.read_parquet('data/sst5/sst-5_train.parquet')
+df_train = pd.read_parquet('../data/sst5/sst-5_train.parquet')
 df_train, df_val = train_test_split(df_train, test_size=0.15, random_state=123, shuffle=True, stratify=df_train['truth'])
 
 X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
     = get_data(sst5='original',
                costco='none',
                inner_split=False,
-               path='data/sst5/fine_tuned/0730/'  # None or 'data/sst5/fine_tuned/0730/'
+               path='../data/sst5/fine_tuned/0730/'  # None or 'data/sst5/fine_tuned/0730/'
                )
 
 # texts_train = df_train['text'].tolist()
