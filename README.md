@@ -22,9 +22,14 @@ According to the [leader board](https://paperswithcode.com/sota/sentiment-analys
 
 ## Installation, Usage, and Reproducibility
 The final models for the project are stored in the [`models`](https://github.com/dhk628/erdos-deeplearning-sentimentanalysis/tree/main/models) folder. Reproduction can be accomplished with the following files:
-* `codes/main.py` for hyperparameter tuning;
-* `codes/aug.py` for NLP data augmentation;
-* `codes/test.py` for evaluating on the test set;
+
+* `codes/main.py` for hyperparameter tuning. This file has several dependencies:
+  * `codes/data.py`
+  * `codes/initialization.py`
+  * `codes/models.py`
+  * `codes/neural_network.py`
+* `codes/aug.py` for NLP data augmentation.
+* `codes/test.py` for evaluating on the test set.
 
 ## More details
 A more detailed explanation can be found in the [wiki](https://github.com/dhk628/erdos-deeplearning-sentimentanalysis/wiki).
