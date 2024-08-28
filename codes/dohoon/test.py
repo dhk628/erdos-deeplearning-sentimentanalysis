@@ -7,17 +7,19 @@ import models
 
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from coral_pytorch.dataset import levels_from_labelbatch, proba_to_label, corn_label_from_logits
-
+from sklearn.metrics import accuracy_score, confusion_matrix, root_mean_squared_error, ConfusionMatrixDisplay
 
 device = 'cuda'
 
 _, _, _, X_test, _, _, _, y_test \
     = get_data(sst5='original',
+               path='data/sst5/fine_tuned/0730/',
                costco='none')
 
-ohe = 'coral'
+ohe = 'none'
 
 if ohe == 'none':
     get_pred = get_argmax
@@ -42,12 +44,12 @@ test_loader = DataLoader(data_test, batch_size=num_samples)
 model = models.FeedForwardNet(
     input_size=1024,
     output_size=out_features,
-    hidden_layers=[10, 969],
-    dropout_p=[0.020485448920360944, 0.047211967470351494],
-    input_dropout=0.3924090355094955
+    hidden_layers=[19, 11],
+    input_dropout=0.3924090355094955,
+    dropout_p=[0.04924066174932384, 0.1],
 )
 
-state_dict = torch.load('models/sst5/z.pt')
+state_dict = torch.load('models/sst5/3.pt')
 model.load_state_dict(state_dict)
 model.to(device)
 
@@ -68,3 +70,15 @@ with torch.no_grad():
         correct += (predicted == ratings_original).sum().item()
 
 print('Accuracy: %f' % (correct / total))
+
+y_prob = outputs.cpu().numpy()
+y_pred = predicted.cpu().numpy()
+
+acc = accuracy_score(y_test, y_pred)
+cm = confusion_matrix(y_test, y_pred, normalize='true')
+
+print('Accuracy: %f' % acc)
+
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.array([1, 2, 3, 4, 5]))
+disp.plot()
+plt.show()

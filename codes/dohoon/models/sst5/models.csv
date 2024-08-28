@@ -1,3 +1,4 @@
-﻿Name,Data,Type,Neurons,
-1,Original,FNN,251,
-2,CORAL,FNN,10,969
+﻿Name,Data,Regression,Type,Neurons,
+1,Original,Regular,FNN,92,
+2,Original,CORAL,FNN,10,969
+3,0730,Regular,FNN,19,11

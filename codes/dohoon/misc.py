@@ -19,7 +19,7 @@ X_train, X_val, X_outer_val, X_test, y_train, y_val, y_outer_val, y_test \
     = get_data(sst5='original',
                costco='none',
                inner_split=False,
-               path='data/sst5/fine_tuned/0811/'  # None or 'data/sst5/fine_tuned/0730/'
+               path='data/sst5/fine_tuned/0730/'  # None or 'data/sst5/fine_tuned/0730/'
                )
 
 # texts_train = df_train['text'].tolist()
