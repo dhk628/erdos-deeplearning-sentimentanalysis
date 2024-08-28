@@ -20,5 +20,11 @@ The [SST-5](https://paperswithcode.com/dataset/sst-5), or Stanford Sentiment Tre
 
 According to the [leader board](https://paperswithcode.com/sota/sentiment-analysis-on-sst-5-fine-grained/), the highest accuracy on the test set is 59.8, but more interestingly, the model that obtained 5th rank with accuracy of 55.5 only used BERT Large model with dropouts. The purpose of our project is to see if we can achieve to be in top 5 of the leader board by hyperparameter tuning (on learning rate and hyperparameters of Adam optimizer) and fine-tuning.
 
+## Installation, Usage, and Reproducibility
+The final models for the project are stored in the [`models`](https://github.com/dhk628/erdos-deeplearning-sentimentanalysis/tree/main/models) folder. Reproduction can be accomplished with the following files:
+* `codes/main.py` for hyperparameter tuning;
+* `codes/aug.py` for NLP data augmentation;
+* `codes/test.py` for evaluating on the test set;
+
 ## More details
 A more detailed explanation can be found in the [wiki](https://github.com/dhk628/erdos-deeplearning-sentimentanalysis/wiki).
